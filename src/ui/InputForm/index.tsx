@@ -12,8 +12,43 @@ interface Props {
   hasResult: boolean
 }
 
+interface ValidationError {
+  field: string
+  message: string
+}
+
+function validate(input: PredictionInput): ValidationError[] {
+  const errors: ValidationError[] = []
+  const { machineSpec, storeConstraints } = input
+
+  if (!machineSpec.machineName.trim()) {
+    errors.push({ field: 'machineName', message: '機種名を入力してください' })
+  }
+  if (machineSpec.firstHitDenominator <= 0) {
+    errors.push({ field: 'firstHit', message: '初当り確率の分母は1以上にしてください' })
+  }
+  if (storeConstraints.machinePrice <= 0) {
+    errors.push({ field: 'machinePrice', message: '機械代を入力してください' })
+  }
+  if (storeConstraints.availableSlots <= 0) {
+    errors.push({ field: 'availableSlots', message: '島の空き台数を1台以上にしてください' })
+  }
+  if (storeConstraints.newMachineBudget <= 0) {
+    errors.push({ field: 'budget', message: '予算上限を入力してください' })
+  }
+  if (storeConstraints.avgDailyMachineMarginYen <= 0) {
+    errors.push({ field: 'margin', message: '予想台粗利を入力してください' })
+  }
+  if (storeConstraints.targetRecoveryWeeks <= 0) {
+    errors.push({ field: 'target', message: '目標回収期間を1週以上にしてください' })
+  }
+
+  return errors
+}
+
 export function InputForm({ value, onChange, onPredict, onReset, hasResult }: Props) {
-  const canPredict = value.machineSpec.machineName.trim().length > 0
+  const errors = validate(value)
+  const canPredict = errors.length === 0
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -51,8 +86,10 @@ export function InputForm({ value, onChange, onPredict, onReset, hasResult }: Pr
             リセット
           </button>
         )}
-        {!canPredict && (
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>機種名を入力してください</span>
+        {errors.length > 0 && (
+          <span style={{ fontSize: 11, color: 'var(--danger)' }}>
+            {errors[0].message}
+          </span>
         )}
       </div>
     </div>

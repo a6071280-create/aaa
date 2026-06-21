@@ -1,8 +1,15 @@
 // DK-SIS全国平均台粗利（2023年度目安）
+// ※ROI計算のベンチマーク用。新台は初月に全体平均の2〜4倍を稼ぐことが多い。
+// 入力画面では「この新台の予想台粗利」として上書き推奨。
 export const DK_SIS_AVG_DAILY_MARGIN_YEN = 3_500
 
+// 新台の初月想定台粗利目安（スマスロ人気機種の標準的な水準）
+// 機械代1,650,000円 ÷ (8,000円/日 × 7) ≈ 29週で回収
+export const DEFAULT_NEW_MACHINE_DAILY_MARGIN_YEN = 8_000
+
 // デフォルト目標回収期間
-export const DEFAULT_TARGET_RECOVERY_WEEKS = 16
+// 業界標準は機械代の初回回収まで26〜52週（半年〜1年）が一般的
+export const DEFAULT_TARGET_RECOVERY_WEEKS = 52
 
 // スマスロ新台の標準的な機械代（目安）
 export const DEFAULT_MACHINE_PRICE_YEN = 1_650_000

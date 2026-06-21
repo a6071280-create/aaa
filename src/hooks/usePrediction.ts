@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import type { PredictionInput, PredictionResult, PredictionSession } from '../domain/types'
 import { RuleBasedPredictor } from '../domain/predictor/RuleBasedPredictor'
-import { DK_SIS_AVG_DAILY_MARGIN_YEN, DEFAULT_TARGET_RECOVERY_WEEKS, DEFAULT_MACHINE_PRICE_YEN } from '../config/defaults'
+import { DEFAULT_NEW_MACHINE_DAILY_MARGIN_YEN, DEFAULT_TARGET_RECOVERY_WEEKS, DEFAULT_MACHINE_PRICE_YEN } from '../config/defaults'
 
 const predictor = new RuleBasedPredictor()
 
@@ -34,7 +34,7 @@ export function buildDefaultInput(): PredictionInput {
       machinePrice: DEFAULT_MACHINE_PRICE_YEN,
       availableSlots: 6,
       targetRecoveryWeeks: DEFAULT_TARGET_RECOVERY_WEEKS,
-      avgDailyMachineMarginYen: DK_SIS_AVG_DAILY_MARGIN_YEN,
+      avgDailyMachineMarginYen: DEFAULT_NEW_MACHINE_DAILY_MARGIN_YEN,
       competitorAdoption: 'normal',
     },
   }

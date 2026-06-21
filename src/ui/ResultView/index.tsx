@@ -25,6 +25,11 @@ export function ResultView({ result, input, session }: Props) {
   const { contributionWeeks, unitRecommendation } = result
   const machineName = input.machineSpec.machineName
 
+  const handlePrint = () => {
+    document.title = `仕入れ判断_${machineName}_${new Date().toLocaleDateString('ja-JP')}`
+    window.print()
+  }
+
   return (
     <div>
       {/* KPI */}
@@ -76,9 +81,17 @@ export function ResultView({ result, input, session }: Props) {
         machineName={machineName}
       />
 
-      {/* エクスポート */}
+      {/* 印刷フッター（印刷時のみ表示） */}
+      <div className="print-footer">
+        {machineName} 仕入れ判断レポート — {new Date(result.predictedAt).toLocaleString('ja-JP')} 作成
+      </div>
+
+      {/* エクスポート・印刷 */}
       {session && (
         <div className="export-row">
+          <button className="btn btn-sm print-btn" type="button" onClick={handlePrint}>
+            印刷／PDF
+          </button>
           <ExportButton session={session} />
         </div>
       )}

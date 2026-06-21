@@ -35,6 +35,7 @@ export function StoreConstraintSection({ value, onChange }: Props) {
 
   const weeklyMargin = value.avgDailyMachineMarginYen * 7
   const recoveryWeeks = weeklyMargin > 0 ? Math.ceil(value.machinePrice / weeklyMargin) : null
+  const roiOk = recoveryWeeks !== null && recoveryWeeks <= value.targetRecoveryWeeks
 
   return (
     <div className="section">
@@ -48,7 +49,7 @@ export function StoreConstraintSection({ value, onChange }: Props) {
 
       <div className="field-row has-unit" style={{ background: '#fffbeb', borderRadius: 3, padding: '4px 0' }}>
         <label className="field-label" style={{ fontWeight: 700 }}>
-          目標投資回収期間 ★
+          目標回収期間 ★ROI主制約
         </label>
         <input
           type="number"
@@ -65,16 +66,18 @@ export function StoreConstraintSection({ value, onChange }: Props) {
 
       <div className="field-row has-unit">
         <label className="field-label">
-          自店 平均台粗利
+          この新台の予想台粗利
           <span
             className="field-unit"
             style={{ display: 'block', fontSize: 10 }}
-            title={`DK-SIS全国平均: ${DK_SIS_AVG_DAILY_MARGIN_YEN.toLocaleString()}円/日`}
-          >※DK-SIS全国平均をデフォルト</span>
+            title={`DK-SIS全国平均は${DK_SIS_AVG_DAILY_MARGIN_YEN.toLocaleString()}円/日。新台好調期は2〜4倍が目安。`}
+          >
+            ※新台の予想値を入力
+          </span>
         </label>
         <input
           type="number"
-          step="100"
+          step="500"
           min="0"
           value={value.avgDailyMachineMarginYen}
           onChange={e => {
@@ -86,8 +89,17 @@ export function StoreConstraintSection({ value, onChange }: Props) {
       </div>
 
       {recoveryWeeks !== null && (
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, textAlign: 'right' }}>
-          週次粗利 {weeklyMargin.toLocaleString()}円 → 回収目安 <strong>{recoveryWeeks}週</strong>
+        <div style={{
+          fontSize: 11,
+          color: roiOk ? 'var(--success)' : 'var(--warning)',
+          marginBottom: 6,
+          textAlign: 'right',
+          fontWeight: 600,
+        }}>
+          週次粗利 {weeklyMargin.toLocaleString()}円 → 回収目安 {recoveryWeeks}週
+          {roiOk
+            ? ` ✓（目標${value.targetRecoveryWeeks}週以内）`
+            : ` ⚠ （目標${value.targetRecoveryWeeks}週を超過）`}
         </div>
       )}
 

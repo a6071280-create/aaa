@@ -390,3 +390,60 @@ table.data-table {
   padding: 12px 0 0;
   justify-content: flex-end;
 }
+
+/* ── 印刷／PDF ───────────────────────────────────────────────── */
+@media print {
+  body { background: #fff; font-size: 11px; }
+
+  .app-header { background: #1e3a5f !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .app-header .subtitle { display: none; }
+
+  /* 入力パネルを非表示にして結果のみ印刷 */
+  .pane-input { display: none !important; }
+  .app-body { display: block !important; height: auto !important; }
+  .pane-result { overflow: visible !important; padding: 8px 16px !important; }
+
+  /* ボタン類を非表示 */
+  .action-bar,
+  .export-row,
+  .btn,
+  .ref-chip-remove { display: none !important; }
+
+  /* KPIカードを横並びに */
+  .result-kpi-row { grid-template-columns: 1fr 1fr; break-inside: avoid; }
+  .kpi-card { border: 1px solid #999; }
+  .kpi-value { font-size: 28px; }
+
+  /* 各カードを改ページ対応 */
+  .result-card { break-inside: avoid; margin-bottom: 8px; border: 1px solid #999; }
+
+  /* テーブル */
+  .data-table th { background: #1e3a5f !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .data-table tr.current-row td { background: #dbeafe !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* バーチャートの色保持 */
+  .bar-positive { background: #15803d !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar-negative { background: #b91c1c !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* 警告ボックス */
+  .warning-box { border: 1px solid #b45309; }
+
+  /* 印刷用フッター */
+  .print-footer { display: block !important; }
+}
+
+.print-footer {
+  display: none;
+  text-align: center;
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.print-btn {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
