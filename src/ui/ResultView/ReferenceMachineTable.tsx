@@ -18,7 +18,6 @@ export function ReferenceMachineTable({ references, prediction, machineName }: P
         <thead>
           <tr>
             <th>機種名</th>
-            <th>コイン単価</th>
             <th>純増（下位/上位）</th>
             <th>実績稼働貢献週</th>
           </tr>
@@ -27,7 +26,6 @@ export function ReferenceMachineTable({ references, prediction, machineName }: P
           {references.map(r => (
             <tr key={r.id}>
               <td>{r.machineName}</td>
-              <td>{r.coinUnitYen > 0 ? `${r.coinUnitYen}円` : '-'}</td>
               <td>
                 {r.pureIncrease
                   ? `${r.pureIncrease.lower}${r.pureIncrease.upper ? `/${r.pureIncrease.upper}` : ''}枚/G`
@@ -38,7 +36,6 @@ export function ReferenceMachineTable({ references, prediction, machineName }: P
           ))}
           <tr style={{ background: '#e0f0ff', fontWeight: 700 }}>
             <td>【予測】{machineName}</td>
-            <td>—</td>
             <td>—</td>
             <td style={{ color: 'var(--primary-light)' }}>{prediction.weeks}週（予測）</td>
           </tr>

@@ -30,7 +30,6 @@ export interface PureIncreaseSpec {
 export interface MachineSpec {
   machineName: string
   category: MachineCategory
-  coinUnitYen: number              // コイン単価 or 玉粗利（円）
   pureIncrease?: PureIncreaseSpec  // スロット系のみ
   gameFlow: GameFlowType
   firstHitDenominator: number      // 初当り確率の分母
@@ -45,7 +44,6 @@ export interface ReferenceMachine {
   machineName: string
   category: MachineCategory
   gameFlow: GameFlowType
-  coinUnitYen: number
   pureIncrease?: PureIncreaseSpec
   actualContributionWeeks: number
   releaseYear: number

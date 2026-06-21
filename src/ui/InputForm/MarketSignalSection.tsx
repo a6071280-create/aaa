@@ -100,7 +100,6 @@ function RefChip({ machine, onRemove }: { machine: ReferenceMachine; onRemove: (
         <span className="ref-chip-name">{machine.machineName}</span>
         <span className="ref-chip-meta" style={{ marginLeft: 8 }}>
           実績 <strong>{machine.actualContributionWeeks}週</strong>
-          {machine.coinUnitYen > 0 && ` / 単価${machine.coinUnitYen}円`}
           {pureStr && ` / ${pureStr}`}
         </span>
       </div>

@@ -7,7 +7,6 @@ function makeInput(overrides: Partial<PredictionInput['storeConstraints']> = {})
     machineSpec: {
       machineName: 'テスト台',
       category: 'smart_slot',
-      coinUnitYen: 3.3,
       pureIncrease: { lower: 3.0 },
       gameFlow: 'pseudo_bonus_at',
       firstHitDenominator: 319,

@@ -37,18 +37,6 @@ export function MachineSpecSection({ value, onChange }: Props) {
         </select>
       </div>
 
-      <div className="field-row has-unit">
-        <label className="field-label">コイン単価 / 玉粗利</label>
-        <input
-          type="number"
-          step="0.1"
-          min="0"
-          value={value.coinUnitYen}
-          onChange={e => set('coinUnitYen', parseFloat(e.target.value) || 0)}
-        />
-        <span className="field-unit">円</span>
-      </div>
-
       {isSlot && (
         <>
           <div className="field-row has-unit">

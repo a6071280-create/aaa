@@ -15,7 +15,6 @@ function makeNeutralInput(refIds: string[]): PredictionInput {
     machineSpec: {
       machineName: 'テスト機種',
       category: 'smart_slot',
-      coinUnitYen: 3.3,
       pureIncrease: { lower: 3.0 },
       gameFlow: 'pseudo_bonus_at',
       firstHitDenominator: 319,

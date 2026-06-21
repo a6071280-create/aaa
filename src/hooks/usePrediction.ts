@@ -10,7 +10,6 @@ export function buildDefaultInput(): PredictionInput {
     machineSpec: {
       machineName: '',
       category: 'smart_slot',
-      coinUnitYen: 3.3,
       pureIncrease: { lower: 3.0 },
       gameFlow: 'pseudo_bonus_at',
       firstHitDenominator: 319,

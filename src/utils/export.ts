@@ -16,7 +16,6 @@ export function exportCSV(session: PredictionSession): void {
     ['機種名', ms.machineName],
     ['種別', ms.category],
     ['ゲームフロー', ms.gameFlow],
-    ['コイン単価（円）', String(ms.coinUnitYen)],
     ['IP知名度', ms.ipFame],
     ['大衆期待度', String(input.marketSignal.popularityScore)],
     ['店長総合評価', String(input.managerEval.overall)],
