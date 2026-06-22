@@ -2,7 +2,9 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ['claude/pachinko-acquisition-predictor-otik6u']
+    branches:
+      - 'claude/pachinko-acquisition-predictor-otik6u'
+      - 'claude/pachinko-acquisition-support-5lvrtq'
   workflow_dispatch:
 
 permissions:
