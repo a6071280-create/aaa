@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  base: '/aaa/',
+  base: '/shiire-tool/',
   plugins: [react()],
   test: {
     environment: 'jsdom',
