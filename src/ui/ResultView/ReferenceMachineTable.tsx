@@ -4,9 +4,10 @@ interface Props {
   references: ReferenceMachine[]
   prediction: ContributionWeeksPrediction
   machineName: string
+  predictedCoinValue?: number
 }
 
-export function ReferenceMachineTable({ references, prediction, machineName }: Props) {
+export function ReferenceMachineTable({ references, prediction, machineName, predictedCoinValue }: Props) {
   if (references.length === 0) return null
 
   return (
@@ -18,7 +19,8 @@ export function ReferenceMachineTable({ references, prediction, machineName }: P
         <thead>
           <tr>
             <th>機種名</th>
-            <th>純増（下位/上位）</th>
+            <th>純増（下/上）</th>
+            <th>コイン単価</th>
             <th>実績稼働貢献週</th>
           </tr>
         </thead>
@@ -31,12 +33,16 @@ export function ReferenceMachineTable({ references, prediction, machineName }: P
                   ? `${r.pureIncrease.lower}${r.pureIncrease.upper ? `/${r.pureIncrease.upper}` : ''}枚/G`
                   : '-'}
               </td>
+              <td>{r.coinUnitYen != null ? `${r.coinUnitYen}円/G` : '-'}</td>
               <td>{r.actualContributionWeeks}週</td>
             </tr>
           ))}
           <tr style={{ background: '#e0f0ff', fontWeight: 700 }}>
             <td>【予測】{machineName}</td>
             <td>—</td>
+            <td style={{ color: '#0369a1' }}>
+              {predictedCoinValue != null ? `${predictedCoinValue}円/G（試算）` : '—'}
+            </td>
             <td style={{ color: 'var(--primary-light)' }}>{prediction.weeks}週（予測）</td>
           </tr>
         </tbody>
