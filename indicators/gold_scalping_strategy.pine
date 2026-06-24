@@ -59,11 +59,11 @@ tp3_mult   = input.float(6.0, "最終利確上限 (ATR ×)", minval=0.1, step=0.
 // Trailing / Break-even
 use_trail  = input.bool(true, "ブレイクイーブン+トレーリング ON", group=grp_atr,
      tooltip="含み益が乗ったらSLをトントン→トレーリングへ移行。勝率と損益改善の要")
-be_trig    = input.float(1.0, "ブレイクイーブン発動 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
-     tooltip="含み益がこの幅を超えたらSLをエントリー価格へ移動")
-trail_trig = input.float(2.0, "トレール開始 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+be_trig    = input.float(1.5, "ブレイクイーブン発動 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="含み益がこの幅を超えたらSLをエントリー価格へ移動。早すぎるとノイズで刈られるため1.5推奨")
+trail_trig = input.float(2.5, "トレール開始 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
      tooltip="含み益がこの幅を超えたらトレーリング開始")
-trail_dist = input.float(1.5, "トレール幅 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+trail_dist = input.float(2.0, "トレール幅 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
      tooltip="高値/安値からこの幅離れてSLを追従させる")
 
 // Session Filter
@@ -87,11 +87,13 @@ ema_fast = ta.ema(close, ema_fast_len)
 ema_slow = ta.ema(close, ema_slow_len)
 ema200   = ta.ema(close, 200)
 
-// 上位足 (15分足) のトレンド確認
-htf_ema_fast = request.security(syminfo.tickerid, "15", ta.ema(close, 8),  lookahead=barmerge.lookahead_off)
-htf_ema_slow = request.security(syminfo.tickerid, "15", ta.ema(close, 21), lookahead=barmerge.lookahead_off)
-htf_ema200   = request.security(syminfo.tickerid, "15", ta.ema(close, 200), lookahead=barmerge.lookahead_off)
-htf_close    = request.security(syminfo.tickerid, "15", close,              lookahead=barmerge.lookahead_off)
+// 上位足トレンド確認（5分足チャートなら 60分=1時間 が定石）
+htf_tf = input.timeframe("60", "上位足トレンド", group=grp_fil,
+     tooltip="この時間足のトレンドと一致した方向だけエントリー。5分足→60が推奨")
+htf_ema_fast = request.security(syminfo.tickerid, htf_tf, ta.ema(close, 8),  lookahead=barmerge.lookahead_off)
+htf_ema_slow = request.security(syminfo.tickerid, htf_tf, ta.ema(close, 21), lookahead=barmerge.lookahead_off)
+htf_ema200   = request.security(syminfo.tickerid, htf_tf, ta.ema(close, 200), lookahead=barmerge.lookahead_off)
+htf_close    = request.security(syminfo.tickerid, htf_tf, close,              lookahead=barmerge.lookahead_off)
 htf_bull = htf_ema_fast > htf_ema_slow and htf_close > htf_ema200
 htf_bear = htf_ema_fast < htf_ema_slow and htf_close < htf_ema200
 
@@ -340,7 +342,7 @@ if show_panel and barstate.islast
          text_size=size.small, text_halign=text.align_center)
 
     // HTF Trend
-    table.cell(panel, 0, 1, "15分足",
+    table.cell(panel, 0, 1, "上位足",
          text_color=color.gray, text_size=size.small,
          bgcolor=color.new(color.black, 55))
     table.cell(panel, 1, 1, htf_bull ? "▲ BULL" : htf_bear ? "▼ BEAR" : "─ 中立",
