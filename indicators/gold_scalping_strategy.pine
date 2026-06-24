@@ -1,0 +1,365 @@
+//@version=5
+// ============================================================
+//  GOLD Scalping Pro [XAU/USD]  ─  Strategy + Backtest
+//  戦略: EMA8/21 トレンド + Stochastic RSI タイミング + ATR リスク管理
+//  推奨時間足: 1分 / 3分 / 5分
+//  推奨ペア  : XAUUSD (Gold Spot)
+// ============================================================
+strategy("GOLD Scalping Pro [XAU/USD]",
+     shorttitle          = "GOLD Scalp Pro",
+     overlay             = true,
+     initial_capital     = 10000,
+     currency            = currency.USD,
+     default_qty_type    = strategy.percent_of_equity,
+     default_qty_value   = 2,
+     commission_type     = strategy.commission.percent,
+     commission_value    = 0.07,
+     slippage            = 2,
+     max_bars_back       = 500,
+     max_lines_count     = 200,
+     max_labels_count    = 200,
+     calc_on_order_fills = false,
+     process_orders_on_close = false)
+
+// ============================================================
+// INPUTS
+// ============================================================
+grp_ema  = "📈 EMA Settings"
+grp_srsi = "⚡ Stochastic RSI"
+grp_atr  = "🎯 Risk Management (ATR)"
+grp_fil  = "🕐 Session / Filter"
+grp_disp = "🎨 Display"
+
+// EMA
+ema_fast_len = input.int(8,  "Fast EMA Period", minval=1, maxval=50,  group=grp_ema,
+     tooltip="短期トレンド。デフォルト8")
+ema_slow_len = input.int(21, "Slow EMA Period", minval=1, maxval=200, group=grp_ema,
+     tooltip="長期トレンド。デフォルト21")
+
+// Stochastic RSI
+srsi_rsi_len   = input.int(14, "RSI Length",         minval=1, group=grp_srsi)
+srsi_stoch_len = input.int(14, "Stochastic Length",  minval=1, group=grp_srsi)
+srsi_k_smooth  = input.int(3,  "K Smooth",           minval=1, group=grp_srsi,
+     tooltip="K線の平滑化。3が標準")
+srsi_d_smooth  = input.int(3,  "D Smooth",           minval=1, group=grp_srsi,
+     tooltip="D線の平滑化。3が標準")
+srsi_ob        = input.int(80, "Overbought Level",   minval=50, maxval=100, group=grp_srsi)
+srsi_os        = input.int(20, "Oversold Level",     minval=0,  maxval=50,  group=grp_srsi)
+
+// ATR Risk Management
+atr_period = input.int(14,  "ATR Period",        minval=1,   group=grp_atr)
+sl_mult    = input.float(1.5, "Stop Loss  (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="エントリー価格からATR×1.5の距離に損切り")
+tp1_mult   = input.float(2.0, "TP1        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="第1利確目標。ポジションの40%を決済")
+tp2_mult   = input.float(3.0, "TP2        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="第2利確目標。ポジションの35%を決済。バックテストの主ターゲット")
+tp3_mult   = input.float(4.5, "TP3        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="第3利確目標。残り25%を決済")
+
+// Session Filter
+use_session = input.bool(true, "Session Filter ON/OFF", group=grp_fil,
+     tooltip="ロンドン/NYセッション外のシグナルを除外する")
+session_utc = input.session("0700-2200", "Active Hours (UTC)",
+     group=grp_fil, tooltip="UTC時間で指定。JST=UTC+9")
+
+// Display Options
+show_ema    = input.bool(true,  "Show EMA Lines",       group=grp_disp)
+show_cloud  = input.bool(true,  "Show EMA Cloud",       group=grp_disp)
+show_signal = input.bool(true,  "Show BUY/SELL Labels", group=grp_disp)
+show_levels = input.bool(true,  "Show SL/TP Lines",     group=grp_disp)
+show_panel  = input.bool(true,  "Show Info Panel",      group=grp_disp)
+
+// ============================================================
+// CORE CALCULATIONS
+// ============================================================
+// EMA
+ema_fast = ta.ema(close, ema_fast_len)
+ema_slow = ta.ema(close, ema_slow_len)
+
+// Stochastic RSI
+_rsi   = ta.rsi(close, srsi_rsi_len)
+_stoch = ta.stoch(_rsi, _rsi, _rsi, srsi_stoch_len)
+k      = ta.sma(_stoch, srsi_k_smooth)
+d      = ta.sma(k, srsi_d_smooth)
+
+// ATR
+atr = ta.atr(atr_period)
+
+// Session
+in_session = use_session ? not na(time(timeframe.period, session_utc, "UTC")) : true
+
+// Trend State
+is_bull = ema_fast > ema_slow
+is_bear = ema_fast < ema_slow
+
+// ============================================================
+// ENTRY CONDITIONS
+// ============================================================
+// LONG: 上昇トレンド中に StochRSI K が D を下から上抜け
+//       かつ K が80未満（過熱ゾーン外）
+long_entry = is_bull
+     and ta.crossover(k, d)
+     and k < srsi_ob
+     and in_session
+     and strategy.position_size == 0
+
+// SHORT: 下降トレンド中に StochRSI K が D を上から下抜け
+//        かつ K が20超（売られすぎゾーン外）
+short_entry = is_bear
+     and ta.crossunder(k, d)
+     and k > srsi_os
+     and in_session
+     and strategy.position_size == 0
+
+// ============================================================
+// PRICE LEVELS  (エントリーごとに計算)
+// ============================================================
+entry_px = close
+
+long_sl  = entry_px - atr * sl_mult
+long_tp1 = entry_px + atr * tp1_mult
+long_tp2 = entry_px + atr * tp2_mult
+long_tp3 = entry_px + atr * tp3_mult
+
+short_sl  = entry_px + atr * sl_mult
+short_tp1 = entry_px - atr * tp1_mult
+short_tp2 = entry_px - atr * tp2_mult
+short_tp3 = entry_px - atr * tp3_mult
+
+// ============================================================
+// STRATEGY EXECUTION
+// バックテスト: TP2をメイン利確ターゲットに使用 (RR 1:2)
+// 実運用では TP1(40%) → SL移動 → TP2(35%) → TP3(25%) を推奨
+// ============================================================
+if long_entry
+    strategy.entry("Long", strategy.long, comment="▲ BUY")
+    strategy.exit("Long Exit", "Long",
+         limit   = long_tp2,
+         stop    = long_sl,
+         comment_profit = "✅ TP2 Hit",
+         comment_loss   = "❌ SL Hit")
+
+if short_entry
+    strategy.entry("Short", strategy.short, comment="▼ SELL")
+    strategy.exit("Short Exit", "Short",
+         limit   = short_tp2,
+         stop    = short_sl,
+         comment_profit = "✅ TP2 Hit",
+         comment_loss   = "❌ SL Hit")
+
+// ============================================================
+// VISUALS ─ EMA
+// ============================================================
+p_fast = plot(show_ema ? ema_fast : na, "EMA Fast (8)",
+     color=color.new(color.blue, 15), linewidth=2)
+p_slow = plot(show_ema ? ema_slow : na, "EMA Slow (21)",
+     color=color.new(color.orange, 15), linewidth=2)
+
+fill(p_fast, p_slow,
+     color = show_cloud
+             ? (is_bull ? color.new(color.green, 85) : color.new(color.red, 85))
+             : na,
+     title = "EMA Cloud")
+
+// ============================================================
+// VISUALS ─ BUY/SELL Signals
+// ============================================================
+plotshape(show_signal and long_entry,  "BUY",  shape.labelup,
+     location.belowbar, color.new(color.green, 0),
+     text="▲ BUY", textcolor=color.white, size=size.small)
+
+plotshape(show_signal and short_entry, "SELL", shape.labeldown,
+     location.abovebar, color.new(color.red, 0),
+     text="▼ SELL", textcolor=color.white, size=size.small)
+
+// ============================================================
+// VISUALS ─ SL / TP Lines (シグナル発生時に描画)
+// ============================================================
+LINE_BARS = 35  // ラインを何本先まで伸ばすか
+
+if show_levels and long_entry
+    // Stop Loss
+    l_sl = line.new(bar_index, long_sl,  bar_index + LINE_BARS, long_sl,
+         color=color.new(color.red, 10), width=2, style=line.style_dashed)
+    // TP1
+    l_t1 = line.new(bar_index, long_tp1, bar_index + LINE_BARS, long_tp1,
+         color=color.new(color.lime, 50), width=1, style=line.style_dotted)
+    // TP2
+    l_t2 = line.new(bar_index, long_tp2, bar_index + LINE_BARS, long_tp2,
+         color=color.new(color.lime, 10), width=2, style=line.style_dashed)
+    // TP3
+    l_t3 = line.new(bar_index, long_tp3, bar_index + LINE_BARS, long_tp3,
+         color=color.new(color.teal, 10), width=2, style=line.style_dashed)
+    // Labels
+    label.new(bar_index + LINE_BARS, long_sl,
+         "SL  " + str.tostring(math.round(long_sl, 2)),
+         color=color.new(color.red, 20), textcolor=color.white,
+         style=label.style_label_left, size=size.small)
+    label.new(bar_index + LINE_BARS, long_tp1,
+         "TP1 " + str.tostring(math.round(long_tp1, 2)) + "  (40%)",
+         color=color.new(color.green, 55), textcolor=color.white,
+         style=label.style_label_left, size=size.small)
+    label.new(bar_index + LINE_BARS, long_tp2,
+         "TP2 " + str.tostring(math.round(long_tp2, 2)) + "  (35%)",
+         color=color.new(color.green, 20), textcolor=color.white,
+         style=label.style_label_left, size=size.small)
+    label.new(bar_index + LINE_BARS, long_tp3,
+         "TP3 " + str.tostring(math.round(long_tp3, 2)) + "  (25%)",
+         color=color.new(color.teal, 20), textcolor=color.white,
+         style=label.style_label_left, size=size.small)
+
+if show_levels and short_entry
+    line.new(bar_index, short_sl,  bar_index + LINE_BARS, short_sl,
+         color=color.new(color.red, 10), width=2, style=line.style_dashed)
+    line.new(bar_index, short_tp1, bar_index + LINE_BARS, short_tp1,
+         color=color.new(color.lime, 50), width=1, style=line.style_dotted)
+    line.new(bar_index, short_tp2, bar_index + LINE_BARS, short_tp2,
+         color=color.new(color.lime, 10), width=2, style=line.style_dashed)
+    line.new(bar_index, short_tp3, bar_index + LINE_BARS, short_tp3,
+         color=color.new(color.teal, 10), width=2, style=line.style_dashed)
+    label.new(bar_index + LINE_BARS, short_sl,
+         "SL  " + str.tostring(math.round(short_sl, 2)),
+         color=color.new(color.red, 20), textcolor=color.white,
+         style=label.style_label_left, size=size.small)
+    label.new(bar_index + LINE_BARS, short_tp1,
+         "TP1 " + str.tostring(math.round(short_tp1, 2)) + "  (40%)",
+         color=color.new(color.green, 55), textcolor=color.white,
+         style=label.style_label_left, size=size.small)
+    label.new(bar_index + LINE_BARS, short_tp2,
+         "TP2 " + str.tostring(math.round(short_tp2, 2)) + "  (35%)",
+         color=color.new(color.green, 20), textcolor=color.white,
+         style=label.style_label_left, size=size.small)
+    label.new(bar_index + LINE_BARS, short_tp3,
+         "TP3 " + str.tostring(math.round(short_tp3, 2)) + "  (25%)",
+         color=color.new(color.teal, 20), textcolor=color.white,
+         style=label.style_label_left, size=size.small)
+
+// ============================================================
+// VISUALS ─ Info Panel
+// ============================================================
+var table panel = table.new(position.top_right, 2, 9,
+     bgcolor      = color.new(color.black, 65),
+     border_color = color.new(color.gray,  40),
+     border_width = 1,
+     frame_color  = color.new(color.yellow, 20),
+     frame_width  = 1)
+
+if show_panel and barstate.islast
+    // Header
+    table.cell(panel, 0, 0, "GOLD Scalping Pro",
+         bgcolor=color.new(color.navy, 40), text_color=color.yellow,
+         text_size=size.small, text_halign=text.align_center)
+    table.cell(panel, 1, 0, timeframe.period == "1" ? "1分足" :
+         timeframe.period == "3" ? "3分足" :
+         timeframe.period == "5" ? "5分足" : timeframe.period + "分足",
+         bgcolor=color.new(color.navy, 40), text_color=color.yellow,
+         text_size=size.small, text_halign=text.align_center)
+
+    // Trend
+    table.cell(panel, 0, 1, "トレンド",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.black, 55))
+    table.cell(panel, 1, 1, is_bull ? "▲ BULL" : "▼ BEAR",
+         text_color=is_bull ? color.lime : color.red,
+         text_size=size.small, bgcolor=color.new(color.black, 55))
+
+    // StochRSI
+    k_col = k > srsi_ob ? color.red : k < srsi_os ? color.lime : color.white
+    table.cell(panel, 0, 2, "StochRSI K/D",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.navy, 65))
+    table.cell(panel, 1, 2,
+         str.tostring(math.round(k, 1)) + " / " + str.tostring(math.round(d, 1)),
+         text_color=k_col, text_size=size.small, bgcolor=color.new(color.navy, 65))
+
+    // ATR
+    table.cell(panel, 0, 3, "ATR",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.black, 55))
+    table.cell(panel, 1, 3, str.tostring(math.round(atr, 2)) + " USD",
+         text_color=color.white, text_size=size.small,
+         bgcolor=color.new(color.black, 55))
+
+    // SL Distance
+    table.cell(panel, 0, 4, "SL幅",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.navy, 65))
+    table.cell(panel, 1, 4, str.tostring(math.round(atr * sl_mult, 2)) + " USD",
+         text_color=color.red, text_size=size.small,
+         bgcolor=color.new(color.navy, 65))
+
+    // TP2 Distance
+    table.cell(panel, 0, 5, "TP2幅",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.black, 55))
+    table.cell(panel, 1, 5, str.tostring(math.round(atr * tp2_mult, 2)) + " USD",
+         text_color=color.lime, text_size=size.small,
+         bgcolor=color.new(color.black, 55))
+
+    // RR Ratio
+    rr = math.round(tp2_mult / sl_mult, 2)
+    table.cell(panel, 0, 6, "RR比 (TP2)",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.navy, 65))
+    table.cell(panel, 1, 6, "1 : " + str.tostring(rr),
+         text_color=color.aqua, text_size=size.small,
+         bgcolor=color.new(color.navy, 65))
+
+    // Session Status
+    table.cell(panel, 0, 7, "セッション",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.black, 55))
+    table.cell(panel, 1, 7, in_session ? "✓ アクティブ" : "✗ 時間外",
+         text_color=in_session ? color.lime : color.gray,
+         text_size=size.small, bgcolor=color.new(color.black, 55))
+
+    // Current Signal
+    sig_txt = long_entry  ? "▲ BUY  エントリー" :
+              short_entry ? "▼ SELL エントリー" :
+              "─ 待機中"
+    sig_col = long_entry  ? color.lime :
+              short_entry ? color.red  : color.gray
+    table.cell(panel, 0, 8, "シグナル",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.black, 40))
+    table.cell(panel, 1, 8, sig_txt,
+         text_color=sig_col, text_size=size.small,
+         bgcolor=color.new(color.black, 40))
+
+// ============================================================
+// ALERTS
+// ============================================================
+alertcondition(long_entry,
+     title   = "🟢 GOLD BUY シグナル",
+     message = "🟢 GOLD BUY シグナル\n" +
+               "────────────────────\n" +
+               "ペア  : XAUUSD\n" +
+               "方向  : ロング (買い)\n" +
+               "条件  : EMA上昇 + StochRSI上抜け\n" +
+               "────────────────────\n" +
+               "⛔ SL : ATR × 1.5 下 (エントリー確認)\n" +
+               "🎯 TP1: ATR × 2.0 上 → 40%決済\n" +
+               "🎯 TP2: ATR × 3.0 上 → 35%決済\n" +
+               "🎯 TP3: ATR × 4.5 上 → 25%決済\n" +
+               "────────────────────\n" +
+               "チャートで価格確認してください")
+
+alertcondition(short_entry,
+     title   = "🔴 GOLD SELL シグナル",
+     message = "🔴 GOLD SELL シグナル\n" +
+               "────────────────────\n" +
+               "ペア  : XAUUSD\n" +
+               "方向  : ショート (売り)\n" +
+               "条件  : EMA下降 + StochRSI下抜け\n" +
+               "────────────────────\n" +
+               "⛔ SL : ATR × 1.5 上 (エントリー確認)\n" +
+               "🎯 TP1: ATR × 2.0 下 → 40%決済\n" +
+               "🎯 TP2: ATR × 3.0 下 → 35%決済\n" +
+               "🎯 TP3: ATR × 4.5 下 → 25%決済\n" +
+               "────────────────────\n" +
+               "チャートで価格確認してください")
+
+alertcondition(long_entry or short_entry,
+     title   = "⚡ GOLD スキャルピング シグナル",
+     message = "⚡ GOLD スキャルピング シグナル発生！チャートを確認してください")

@@ -1,0 +1,101 @@
+//@version=5
+// ============================================================
+//  GOLD Scalping Pro ─ Stochastic RSI サブパネル
+//  メインチャートの gold_scalping_strategy.pine と併用する
+//  このスクリプトをサブウィンドウに追加すると StochRSI が見やすくなる
+// ============================================================
+indicator("GOLD Scalp ─ StochRSI Panel", shorttitle="StochRSI [GOLD]",
+     overlay=false, max_bars_back=500)
+
+// ============================================================
+// INPUTS (メインスクリプトと同じ値に揃えること)
+// ============================================================
+grp_srsi  = "Stochastic RSI"
+grp_ema   = "EMA (for trend color)"
+grp_disp  = "Display"
+
+rsi_len    = input.int(14, "RSI Length",        minval=1, group=grp_srsi)
+stoch_len  = input.int(14, "Stochastic Length", minval=1, group=grp_srsi)
+k_smooth   = input.int(3,  "K Smooth",          minval=1, group=grp_srsi)
+d_smooth   = input.int(3,  "D Smooth",          minval=1, group=grp_srsi)
+ob_level   = input.int(80, "Overbought",        minval=50, maxval=100, group=grp_srsi)
+os_level   = input.int(20, "Oversold",          minval=0,  maxval=50,  group=grp_srsi)
+
+fast_ema   = input.int(8,  "Fast EMA",  minval=1, group=grp_ema)
+slow_ema   = input.int(21, "Slow EMA",  minval=1, group=grp_ema)
+
+show_hist  = input.bool(true, "Show Histogram", group=grp_disp)
+show_zones = input.bool(true, "Show OB/OS Zones", group=grp_disp)
+
+// ============================================================
+// CALCULATIONS
+// ============================================================
+_rsi   = ta.rsi(close, rsi_len)
+_stoch = ta.stoch(_rsi, _rsi, _rsi, stoch_len)
+k      = ta.sma(_stoch, k_smooth)
+d      = ta.sma(k, d_smooth)
+
+ema_f  = ta.ema(close, fast_ema)
+ema_s  = ta.ema(close, slow_ema)
+is_bull = ema_f > ema_s
+
+cross_up   = ta.crossover(k, d)
+cross_down = ta.crossunder(k, d)
+
+// ============================================================
+// OB/OS ZONES (背景塗りつぶし)
+// ============================================================
+ob_bg = show_zones ? color.new(color.red,   88) : na
+os_bg = show_zones ? color.new(color.green, 88) : na
+
+bgcolor(k > ob_level ? ob_bg : na, title="Overbought Zone")
+bgcolor(k < os_level ? os_bg : na, title="Oversold Zone")
+
+// Horizontal Lines
+hline(ob_level, "Overbought", color=color.new(color.red,   30), linestyle=hline.style_dashed, linewidth=1)
+hline(os_level, "Oversold",   color=color.new(color.green, 30), linestyle=hline.style_dashed, linewidth=1)
+hline(50,       "Midline",    color=color.new(color.gray,  50), linestyle=hline.style_dotted, linewidth=1)
+
+// ============================================================
+// HISTOGRAM (K - D の差)
+// ============================================================
+hist_val   = k - d
+hist_color = hist_val >= 0
+             ? (hist_val > hist_val[1] ? color.new(color.lime,  10) : color.new(color.lime,  50))
+             : (hist_val < hist_val[1] ? color.new(color.red,   10) : color.new(color.red,   50))
+
+plot(show_hist ? hist_val : na, "K-D Histogram",
+     color=hist_color, style=plot.style_columns, linewidth=1)
+
+// ============================================================
+// K / D LINES
+// ============================================================
+k_col = is_bull ? color.new(color.aqua, 0) : color.new(color.yellow, 0)
+plot(k, "K Line", color=k_col,              linewidth=2)
+plot(d, "D Line", color=color.new(color.gray, 20), linewidth=1)
+
+// ============================================================
+// CROSSOVER SIGNALS
+// ============================================================
+long_sig  = cross_up   and is_bull and k < ob_level
+short_sig = cross_down and not is_bull and k > os_level
+
+plotshape(long_sig,  "BUY Cross",  shape.triangleup,
+     location.bottom, color=color.new(color.lime, 0), size=size.small)
+plotshape(short_sig, "SELL Cross", shape.triangledown,
+     location.top,    color=color.new(color.red, 0),  size=size.small)
+
+// ============================================================
+// ALERTS (メインと同じ条件)
+// ============================================================
+alertcondition(long_sig,
+     title   = "🟢 StochRSI BUY Cross",
+     message = "🟢 GOLD BUY: StochRSI K が D を上抜け (EMA上昇トレンド中)")
+
+alertcondition(short_sig,
+     title   = "🔴 StochRSI SELL Cross",
+     message = "🔴 GOLD SELL: StochRSI K が D を下抜け (EMA下降トレンド中)")
+
+alertcondition(long_sig or short_sig,
+     title   = "⚡ StochRSI Signal",
+     message = "⚡ GOLD StochRSI シグナル発生")
