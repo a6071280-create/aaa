@@ -2,13 +2,15 @@ import { useState } from 'react'
 import type { MarketSignal, ReferenceMachine, EvalScore } from '../../domain/types'
 import { REFERENCE_MACHINES } from '../../data/referenceMachines'
 import { StarRating } from './MachineSpecSection'
+import { XBuzzPanel } from '../XBuzzPanel'
 
 interface Props {
   value: MarketSignal
   onChange: (v: MarketSignal) => void
+  machineName: string
 }
 
-export function MarketSignalSection({ value, onChange }: Props) {
+export function MarketSignalSection({ value, onChange, machineName }: Props) {
   const [selectId, setSelectId] = useState('')
 
   const addRef = () => {
@@ -52,6 +54,11 @@ export function MarketSignalSection({ value, onChange }: Props) {
           onChange={e => onChange({ ...value, popularityMemo: e.target.value })}
         />
       </div>
+
+      <XBuzzPanel
+        machineName={machineName}
+        onPopularityChange={score => onChange({ ...value, popularityScore: score })}
+      />
 
       <div style={{ marginTop: 8 }}>
         <div className="field-label" style={{ marginBottom: 4 }}>

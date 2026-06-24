@@ -4,6 +4,7 @@ import { ScoreBreakdownChart } from './ScoreBreakdownChart'
 import { SensitivityTable } from './SensitivityTable'
 import { ReferenceMachineTable } from './ReferenceMachineTable'
 import { ExportButton } from '../ExportButton'
+import { estimateCoinValue } from '../../domain/coinValue/estimateCoinValue'
 
 interface Props {
   result: PredictionResult | null
@@ -24,6 +25,10 @@ export function ResultView({ result, input, session }: Props) {
 
   const { contributionWeeks, unitRecommendation } = result
   const machineName = input.machineSpec.machineName
+  const pureInc = input.machineSpec.pureIncrease?.lower ?? 0
+  const predictedCoinValue = (input.machineSpec.category === 'smart_slot' && pureInc > 0)
+    ? estimateCoinValue(input.machineSpec.coinValueSpec ?? {}, pureInc, input.machineSpec.firstHitDenominator).coinValueYen
+    : undefined
 
   const handlePrint = () => {
     document.title = `仕入れ判断_${machineName}_${new Date().toLocaleDateString('ja-JP')}`
@@ -79,6 +84,7 @@ export function ResultView({ result, input, session }: Props) {
         references={input.marketSignal.referenceMachines}
         prediction={contributionWeeks}
         machineName={machineName}
+        predictedCoinValue={predictedCoinValue}
       />
 
       {/* 印刷フッター（印刷時のみ表示） */}

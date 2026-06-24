@@ -11,6 +11,11 @@ export interface PredictorWeights {
   // IP知名度ボーナス（絶対値、週数加算）
   ipFameBonus: Record<IPFame, number>
 
+  // コイン単価ペナルティ（§3.5）
+  // 高コイン単価ほど寿命が短い傾向。1円/G超過あたりの週数減点。
+  coinValuePenaltyPerYenAbove: number  // ペナルティ係数（負の値）
+  coinValueBaselineYen: number         // ペナルティなしの基準単価（円/G）
+
   // 競合導入による需要係数（availableSlotsに乗じる）
   competitorAdoptionFactor: Record<CompetitorLevel, number>
 
@@ -34,6 +39,11 @@ export const DEFAULT_WEIGHTS: PredictorWeights = {
     mid: 0,
     original: -8,
   },
+
+  // コイン単価が基準(3.1円)より1円高いごとに-10週（実績より: モンキーV=119, かぐや様=57で差62週）
+  // 単価差: 4.2-3.1=1.1円 に対し週数差: 119-57≈62週 → 62/1.1≈56週/円だが他要因もあるため保守的に-10
+  coinValuePenaltyPerYenAbove: -10,
+  coinValueBaselineYen: 3.1,
 
   competitorAdoptionFactor: {
     high: 0.65,    // 競合多い → 自店取り分減

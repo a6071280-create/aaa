@@ -144,9 +144,17 @@ describe('RuleBasedPredictor breakdown 構造テスト', () => {
     expect(breakdown.total).toBe(Math.max(1, Math.round(rawTotal)))
   })
 
-  it('breakdown の items に 6 つの因子が含まれる', () => {
+  it('breakdown の items に 7 つの因子が含まれる（コイン単価ファクター追加後）', () => {
     const input = makeNeutralInput(['hokuto_no_ken'])
     const { breakdown } = predictor.predict(input).contributionWeeks
-    expect(breakdown.items).toHaveLength(6)
+    // 大衆期待度・総合評価・出玉爆発力・ゲーム性・客層フィット・IP知名度・コイン単価
+    expect(breakdown.items).toHaveLength(7)
+  })
+
+  it('コイン単価ファクターが items に含まれる', () => {
+    const input = makeNeutralInput(['hokuto_no_ken'])
+    const { breakdown } = predictor.predict(input).contributionWeeks
+    const coinItem = breakdown.items.find(i => i.factor === 'コイン単価')
+    expect(coinItem).toBeDefined()
   })
 })

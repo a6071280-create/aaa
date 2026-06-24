@@ -9,6 +9,7 @@ import type {
 } from '../types'
 import { DEFAULT_WEIGHTS, type PredictorWeights } from '../../config/weights'
 import { recommendUnits } from '../units/recommendUnits'
+import { estimateCoinValue } from '../coinValue/estimateCoinValue'
 
 export class RuleBasedPredictor implements IPredictor {
   private weights: PredictorWeights
@@ -90,6 +91,20 @@ export class RuleBasedPredictor implements IPredictor {
       delta: ipDelta,
       rationale: machineSpec.ipFame === 'famous' ? '著名IP補正' : machineSpec.ipFame === 'original' ? 'オリジナルIP減点' : '中堅IP（補正なし）',
     })
+
+    // ── §3.5 コイン単価ペナルティ ─────────────────────────────────────────
+    const isSlotType = machineSpec.category === 'smart_slot' || machineSpec.category === 'normal_20'
+    const pureInc = machineSpec.pureIncrease?.lower ?? 0
+    if (isSlotType && pureInc > 0) {
+      const coinSpec = machineSpec.coinValueSpec ?? {}
+      const breakdown = estimateCoinValue(coinSpec, pureInc, machineSpec.firstHitDenominator)
+      const coinDelta = (breakdown.coinValueYen - w.coinValueBaselineYen) * w.coinValuePenaltyPerYenAbove
+      items.push({
+        factor: 'コイン単価',
+        delta: Math.round(coinDelta),
+        rationale: `試算${breakdown.coinValueYen}円/G（基準${w.coinValueBaselineYen}円、差${(breakdown.coinValueYen - w.coinValueBaselineYen).toFixed(1)}円）× ${w.coinValuePenaltyPerYenAbove}週/円${breakdown.normalCoinsPerGSource !== '入力値' ? '（試算値）' : ''}`,
+      })
+    }
 
     const totalDelta = items.reduce((s, it) => s + it.delta, 0)
     const rawTotal = baseline + totalDelta

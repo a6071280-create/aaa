@@ -20,6 +20,41 @@ export type CompetitorLevel = 'high' | 'normal' | 'low' | 'unknown'
 export type Confidence = 'low' | 'mid' | 'high'
 export type EvalScore = 1 | 2 | 3 | 4 | 5
 
+// ── §6 ゲームフロー3軸（スマスロAT機用）────────────────────────────────────
+export type NormalPhaseMgmt = '周期管理' | 'ゲーム数管理' | 'ポイント管理'
+export type FirstHitTrigger = '規定周期解除' | '規定ゲーム数解除' | 'レア役解除'
+export type AtType = '差枚管理型AT' | 'ゲーム数管理型AT' | 'セット数管理AT' | 'STタイプ'
+
+export interface GameFlow {
+  normalPhase: NormalPhaseMgmt[]
+  firstHitTriggers: FirstHitTrigger[]
+  atTypes: { type: AtType; role: 'primary' | 'secondary' }[]
+}
+
+// ── §3.5 コイン単価試算用スペック ────────────────────────────────────────────
+export interface CoinValueSpec {
+  normalCoinsPerG?: number        // 通常時コイン持ち（50枚あたりG数。デフォルト32）
+  atContinuationRate?: number     // AT継続率 (%)
+  avgAtContinuationGames?: number // 平均AT継続G数（継続率の代替）
+  avgGainPerFirstHit?: number     // AT初当り時の平均獲得枚数
+  // 詳細入力（任意）
+  pushOrderNaviRate?: number      // 押し順ナビ発生率 (%)
+  avgBonusAddition?: number       // 特化ゾーン平均上乗せ（枚）
+}
+
+export interface CoinValueBreakdown {
+  mode: 'simple' | 'detailed'
+  normalCoinsPerG: number         // 使用した通常時コイン持ち
+  normalCoinsPerGSource: string   // '入力値' or '純増から推定' or 'デフォルト'
+  avgGainPerHit?: number          // 平均獲得枚数（参考）
+  avgConsumedUntilHit: number     // 初当りまでの平均消費枚数（参考）
+  firstHitDenominator: number
+  expectedDiffPerGame?: number    // 1Gあたり期待差枚（参考）
+  coinValueYen: number            // コイン単価（円/G）
+  formula: string                 // 計算式の説明
+  isEstimated: true
+}
+
 // ── §2-A 機種スペック ────────────────────────────────────────────────────────
 
 export interface PureIncreaseSpec {
@@ -30,9 +65,11 @@ export interface PureIncreaseSpec {
 export interface MachineSpec {
   machineName: string
   category: MachineCategory
-  pureIncrease?: PureIncreaseSpec  // スロット系のみ
-  gameFlow: GameFlowType
-  firstHitDenominator: number      // 初当り確率の分母
+  pureIncrease?: PureIncreaseSpec    // スロット系のみ
+  gameFlow: GameFlowType             // ベースライン分類（既存）
+  gameFlowDetail?: GameFlow          // 3軸詳細（スマスロAT機用・任意）
+  coinValueSpec?: CoinValueSpec      // コイン単価試算用（スマスロ系・任意）
+  firstHitDenominator: number        // 初当り確率の分母
   maker: string
   ipFame: IPFame
 }
@@ -45,6 +82,7 @@ export interface ReferenceMachine {
   category: MachineCategory
   gameFlow: GameFlowType
   pureIncrease?: PureIncreaseSpec
+  coinUnitYen?: number               // 実績コイン単価（円/G）
   actualContributionWeeks: number
   releaseYear: number
   memo?: string
