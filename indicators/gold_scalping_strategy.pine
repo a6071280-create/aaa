@@ -72,10 +72,18 @@ show_panel  = input.bool(true,  "Show Info Panel",      group=grp_disp)
 // ============================================================
 // CORE CALCULATIONS
 // ============================================================
-// EMA
+// EMA (1分足)
 ema_fast = ta.ema(close, ema_fast_len)
 ema_slow = ta.ema(close, ema_slow_len)
 ema200   = ta.ema(close, 200)
+
+// 上位足 (15分足) のトレンド確認
+htf_ema_fast = request.security(syminfo.tickerid, "15", ta.ema(close, 8),  lookahead=barmerge.lookahead_off)
+htf_ema_slow = request.security(syminfo.tickerid, "15", ta.ema(close, 21), lookahead=barmerge.lookahead_off)
+htf_ema200   = request.security(syminfo.tickerid, "15", ta.ema(close, 200), lookahead=barmerge.lookahead_off)
+htf_close    = request.security(syminfo.tickerid, "15", close,              lookahead=barmerge.lookahead_off)
+htf_bull = htf_ema_fast > htf_ema_slow and htf_close > htf_ema200
+htf_bear = htf_ema_fast < htf_ema_slow and htf_close < htf_ema200
 
 // Stochastic RSI
 _rsi   = ta.rsi(close, srsi_rsi_len)
@@ -87,33 +95,32 @@ d      = ta.sma(k, srsi_d_smooth)
 rsi14 = ta.rsi(close, 14)
 
 // ATR
-atr = ta.atr(atr_period)
-
-// ATRが平均より高い（ボラティリティがある時だけ入る）
-atr_ma       = ta.sma(atr, 50)
-vol_ok       = atr > atr_ma * 0.8
+atr    = ta.atr(atr_period)
+atr_ma = ta.sma(atr, 50)
+vol_ok = atr > atr_ma * 0.8
 
 // Session
 in_session = use_session ? not na(time(timeframe.period, session_utc, "UTC")) : true
 
-// Trend State
+// Trend State (1分足)
 is_bull = ema_fast > ema_slow
 is_bear = ema_fast < ema_slow
 
-// EMAの開き具合（レンジ相場を除外）0.05%以上開いていること
+// EMAの開き具合（レンジ相場を除外）
 ema_gap_pct  = math.abs(ema_fast - ema_slow) / close * 100
 strong_trend = ema_gap_pct > 0.05
 
-// StochRSIが直近8本で売られすぎ/買われすぎゾーンを通過したか（厳格化）
+// StochRSIが直近8本で売られすぎ/買われすぎゾーンを通過したか
 was_oversold   = ta.lowest(k, 8) < 20
 was_overbought = ta.highest(k, 8) > 80
 
 // ============================================================
-// ENTRY CONDITIONS（強化版 v2）
+// ENTRY CONDITIONS（強化版 v3 ─ 上位足フィルター追加）
 // ============================================================
-// LONG: EMA200上 + 上昇トレンド + 強いトレンド
-//       + RSI>50 + StochRSI売られすぎからの反発
-long_entry = is_bull
+// LONG: 15分足も上昇 + 1分足上昇 + EMA200上
+//       + RSI>50 + StochRSI売られすぎ反発
+long_entry = htf_bull
+     and is_bull
      and close > ema200
      and strong_trend
      and rsi14 > 50
@@ -124,9 +131,10 @@ long_entry = is_bull
      and in_session
      and strategy.position_size == 0
 
-// SHORT: EMA200下 + 下降トレンド + 強いトレンド
-//        + RSI<50 + StochRSI買われすぎからの反落
-short_entry = is_bear
+// SHORT: 15分足も下降 + 1分足下降 + EMA200下
+//        + RSI<50 + StochRSI買われすぎ反落
+short_entry = htf_bear
+     and is_bear
      and close < ema200
      and strong_trend
      and rsi14 < 50
@@ -265,7 +273,7 @@ if show_levels and short_entry
 // ============================================================
 // VISUALS ─ Info Panel
 // ============================================================
-var table panel = table.new(position.top_right, 2, 11,
+var table panel = table.new(position.top_right, 2, 12,
      bgcolor      = color.new(color.black, 65),
      border_color = color.new(color.gray,  40),
      border_width = 1,
@@ -283,80 +291,88 @@ if show_panel and barstate.islast
          bgcolor=color.new(color.navy, 40), text_color=color.yellow,
          text_size=size.small, text_halign=text.align_center)
 
-    // Trend
-    table.cell(panel, 0, 1, "トレンド",
+    // HTF Trend
+    table.cell(panel, 0, 1, "15分足",
          text_color=color.gray, text_size=size.small,
          bgcolor=color.new(color.black, 55))
-    table.cell(panel, 1, 1, is_bull ? "▲ BULL" : "▼ BEAR",
-         text_color=is_bull ? color.lime : color.red,
+    table.cell(panel, 1, 1, htf_bull ? "▲ BULL" : htf_bear ? "▼ BEAR" : "─ 中立",
+         text_color=htf_bull ? color.lime : htf_bear ? color.red : color.gray,
          text_size=size.small, bgcolor=color.new(color.black, 55))
+
+    // 1min Trend
+    table.cell(panel, 0, 2, "1分足",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.navy, 65))
+    table.cell(panel, 1, 2, is_bull ? "▲ BULL" : "▼ BEAR",
+         text_color=is_bull ? color.lime : color.red,
+         text_size=size.small, bgcolor=color.new(color.navy, 65))
 
     // EMA200 filter
     above200 = close > ema200
-    table.cell(panel, 0, 2, "EMA200",
-         text_color=color.gray, text_size=size.small,
-         bgcolor=color.new(color.navy, 65))
-    table.cell(panel, 1, 2, above200 ? "▲ 上" : "▼ 下",
-         text_color=above200 ? color.lime : color.red,
-         text_size=size.small, bgcolor=color.new(color.navy, 65))
-
-    // Trend strength
-    table.cell(panel, 0, 3, "トレンド強度",
+    table.cell(panel, 0, 3, "EMA200",
          text_color=color.gray, text_size=size.small,
          bgcolor=color.new(color.black, 55))
-    table.cell(panel, 1, 3, strong_trend ? "✓ 強い" : "✗ レンジ",
-         text_color=strong_trend ? color.lime : color.orange,
+    table.cell(panel, 1, 3, above200 ? "▲ 上" : "▼ 下",
+         text_color=above200 ? color.lime : color.red,
          text_size=size.small, bgcolor=color.new(color.black, 55))
+
+    // Trend strength
+    table.cell(panel, 0, 4, "トレンド強度",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.navy, 65))
+    table.cell(panel, 1, 4, strong_trend ? "✓ 強い" : "✗ レンジ",
+         text_color=strong_trend ? color.lime : color.orange,
+         text_size=size.small, bgcolor=color.new(color.navy, 65))
 
     // StochRSI
     k_col = k > srsi_ob ? color.red : k < srsi_os ? color.lime : color.white
-    table.cell(panel, 0, 4, "StochRSI K/D",
+    table.cell(panel, 0, 5, "StochRSI K/D",
          text_color=color.gray, text_size=size.small,
-         bgcolor=color.new(color.navy, 65))
-    table.cell(panel, 1, 4,
+         bgcolor=color.new(color.black, 55))
+    table.cell(panel, 1, 5,
          str.tostring(math.round(k, 1)) + " / " + str.tostring(math.round(d, 1)),
-         text_color=k_col, text_size=size.small, bgcolor=color.new(color.navy, 65))
+         text_color=k_col, text_size=size.small, bgcolor=color.new(color.black, 55))
 
     // ATR
-    table.cell(panel, 0, 5, "ATR",
+    table.cell(panel, 0, 6, "ATR",
          text_color=color.gray, text_size=size.small,
-         bgcolor=color.new(color.black, 55))
-    table.cell(panel, 1, 5, str.tostring(math.round(atr, 2)) + " USD",
+         bgcolor=color.new(color.navy, 65))
+    table.cell(panel, 1, 6, str.tostring(math.round(atr, 2)) + " USD",
          text_color=color.white, text_size=size.small,
-         bgcolor=color.new(color.black, 55))
+         bgcolor=color.new(color.navy, 65))
 
     // SL Distance
-    table.cell(panel, 0, 6, "SL幅",
+    table.cell(panel, 0, 7, "SL幅",
          text_color=color.gray, text_size=size.small,
-         bgcolor=color.new(color.navy, 65))
-    table.cell(panel, 1, 6, str.tostring(math.round(atr * sl_mult, 2)) + " USD",
+         bgcolor=color.new(color.black, 55))
+    table.cell(panel, 1, 7, str.tostring(math.round(atr * sl_mult, 2)) + " USD",
          text_color=color.red, text_size=size.small,
-         bgcolor=color.new(color.navy, 65))
+         bgcolor=color.new(color.black, 55))
 
     // TP2 Distance
-    table.cell(panel, 0, 7, "TP2幅",
+    table.cell(panel, 0, 8, "TP2幅",
          text_color=color.gray, text_size=size.small,
-         bgcolor=color.new(color.black, 55))
-    table.cell(panel, 1, 7, str.tostring(math.round(atr * tp2_mult, 2)) + " USD",
+         bgcolor=color.new(color.navy, 65))
+    table.cell(panel, 1, 8, str.tostring(math.round(atr * tp2_mult, 2)) + " USD",
          text_color=color.lime, text_size=size.small,
-         bgcolor=color.new(color.black, 55))
+         bgcolor=color.new(color.navy, 65))
 
     // RR Ratio
     rr = math.round(tp2_mult / sl_mult, 2)
-    table.cell(panel, 0, 8, "RR比 (TP2)",
-         text_color=color.gray, text_size=size.small,
-         bgcolor=color.new(color.navy, 65))
-    table.cell(panel, 1, 8, "1 : " + str.tostring(rr),
-         text_color=color.aqua, text_size=size.small,
-         bgcolor=color.new(color.navy, 65))
-
-    // Session Status
-    table.cell(panel, 0, 9, "セッション",
+    table.cell(panel, 0, 9, "RR比 (TP2)",
          text_color=color.gray, text_size=size.small,
          bgcolor=color.new(color.black, 55))
-    table.cell(panel, 1, 9, in_session ? "✓ アクティブ" : "✗ 時間外",
+    table.cell(panel, 1, 9, "1 : " + str.tostring(rr),
+         text_color=color.aqua, text_size=size.small,
+         bgcolor=color.new(color.black, 55))
+
+    // Session Status
+    table.cell(panel, 0, 10, "セッション",
+         text_color=color.gray, text_size=size.small,
+         bgcolor=color.new(color.navy, 65))
+    table.cell(panel, 1, 10, in_session ? "✓ アクティブ" : "✗ 時間外",
          text_color=in_session ? color.lime : color.gray,
-         text_size=size.small, bgcolor=color.new(color.black, 55))
+         text_size=size.small, bgcolor=color.new(color.navy, 65))
 
     // Current Signal
     sig_txt = long_entry  ? "▲ BUY  エントリー" :
@@ -364,10 +380,10 @@ if show_panel and barstate.islast
               "─ 待機中"
     sig_col = long_entry  ? color.lime :
               short_entry ? color.red  : color.gray
-    table.cell(panel, 0, 10, "シグナル",
+    table.cell(panel, 0, 11, "シグナル",
          text_color=color.gray, text_size=size.small,
          bgcolor=color.new(color.black, 40))
-    table.cell(panel, 1, 10, sig_txt,
+    table.cell(panel, 1, 11, sig_txt,
          text_color=sig_col, text_size=size.small,
          bgcolor=color.new(color.black, 40))
 
