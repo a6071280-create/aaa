@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import type {
   MachineSpec, EvalScore,
-  NormalPhaseMgmt, FirstHitTrigger, AtType, GameFlow, CoinValueSpec,
+  NormalPhaseMgmt, FirstHitTrigger, AtType, GameFlow, CoinValueSpec, GameFlowType,
 } from '../../domain/types'
-import { CATEGORY_LABELS, GAME_FLOW_LABELS, IP_FAME_LABELS } from '../../config/defaults'
+import { CATEGORY_LABELS, IP_FAME_LABELS } from '../../config/defaults'
 import { estimateCoinValue } from '../../domain/coinValue/estimateCoinValue'
 
 interface Props {
@@ -17,6 +17,14 @@ const AT_TYPE_OPTIONS: AtType[] = ['差枚管理型AT', 'ゲーム数管理型AT
 
 function toggleArray<T>(arr: T[], item: T): T[] {
   return arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item]
+}
+
+function deriveGameFlowType(detail: GameFlow, category: MachineSpec['category']): GameFlowType {
+  if (category === 'normal_20') return 'normal_a'
+  const primaryType = detail.atTypes.find(a => a.role === 'primary')?.type
+  if (primaryType === 'STタイプ') return 'st'
+  if (primaryType === 'ゲーム数管理型AT') return 'game_count_add'
+  return 'pseudo_bonus_at'
 }
 
 function GameFlowDetail3Axis({ value, onChange }: { value: GameFlow; onChange: (v: GameFlow) => void }) {
@@ -254,8 +262,6 @@ function CoinValueSpecSection({
 }
 
 export function MachineSpecSection({ value, onChange }: Props) {
-  const [showGameFlowDetail, setShowGameFlowDetail] = useState(false)
-
   const set = <K extends keyof MachineSpec>(k: K, v: MachineSpec[K]) =>
     onChange({ ...value, [k]: v })
 
@@ -266,6 +272,10 @@ export function MachineSpecSection({ value, onChange }: Props) {
     normalPhase: [],
     firstHitTriggers: [],
     atTypes: [],
+  }
+
+  const handleGameFlowDetailChange = (gf: GameFlow) => {
+    onChange({ ...value, gameFlowDetail: gf, gameFlow: deriveGameFlowType(gf, value.category) })
   }
 
   return (
@@ -324,33 +334,11 @@ export function MachineSpecSection({ value, onChange }: Props) {
         </>
       )}
 
-      <div className="field-row">
-        <label className="field-label">ゲームフロー類型</label>
-        <select value={value.gameFlow} onChange={e => set('gameFlow', e.target.value as MachineSpec['gameFlow'])}>
-          {Object.entries(GAME_FLOW_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-      </div>
-
       {isSmartSlot && (
-        <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <button
-              type="button"
-              style={{ fontSize: 10, color: 'var(--primary-light)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-              onClick={() => setShowGameFlowDetail(v => !v)}
-            >
-              {showGameFlowDetail ? '▲ 3軸詳細を閉じる' : '▼ ゲームフロー3軸詳細（周期/初当り/AT型）'}
-            </button>
-          </div>
-          {showGameFlowDetail && (
-            <GameFlowDetail3Axis
-              value={value.gameFlowDetail ?? defaultGameFlow}
-              onChange={gf => set('gameFlowDetail', gf)}
-            />
-          )}
-        </>
+        <GameFlowDetail3Axis
+          value={value.gameFlowDetail ?? defaultGameFlow}
+          onChange={handleGameFlowDetailChange}
+        />
       )}
 
       <div className="field-row has-unit">
