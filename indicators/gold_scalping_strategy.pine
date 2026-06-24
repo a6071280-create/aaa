@@ -47,14 +47,24 @@ srsi_os        = input.int(20, "Oversold Level",     minval=0,  maxval=50,  grou
 
 // ATR Risk Management
 atr_period = input.int(14,  "ATR Period",        minval=1,   group=grp_atr)
-sl_mult    = input.float(1.5, "Stop Loss  (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
-     tooltip="エントリー価格からATR×1.5の距離に損切り")
-tp1_mult   = input.float(2.0, "TP1        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
-     tooltip="第1利確目標。ポジションの40%を決済")
-tp2_mult   = input.float(4.0, "TP2        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
-     tooltip="第2利確目標。ポジションの35%を決済。バックテストの主ターゲット")
-tp3_mult   = input.float(4.5, "TP3        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
-     tooltip="第3利確目標。残り25%を決済")
+sl_mult    = input.float(2.0, "Stop Loss  (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="初期損切り。ATR×2.0でノイズ耐性を確保")
+tp1_mult   = input.float(1.5, "TP1 表示    (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="第1利確目標ライン（表示用）")
+tp2_mult   = input.float(3.0, "TP2 表示    (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="第2利確目標ライン（表示用）")
+tp3_mult   = input.float(6.0, "最終利確上限 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="トレーリングが効かない場合の最終利確上限")
+
+// Trailing / Break-even
+use_trail  = input.bool(true, "ブレイクイーブン+トレーリング ON", group=grp_atr,
+     tooltip="含み益が乗ったらSLをトントン→トレーリングへ移行。勝率と損益改善の要")
+be_trig    = input.float(1.0, "ブレイクイーブン発動 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="含み益がこの幅を超えたらSLをエントリー価格へ移動")
+trail_trig = input.float(2.0, "トレール開始 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="含み益がこの幅を超えたらトレーリング開始")
+trail_dist = input.float(1.5, "トレール幅 (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+     tooltip="高値/安値からこの幅離れてSLを追従させる")
 
 // Session Filter
 use_session = input.bool(true, "Session Filter ON/OFF", group=grp_fil,
@@ -161,25 +171,63 @@ short_tp2 = entry_px - atr * tp2_mult
 short_tp3 = entry_px - atr * tp3_mult
 
 // ============================================================
-// STRATEGY EXECUTION
-// バックテスト: TP2をメイン利確ターゲットに使用 (RR 1:2)
-// 実運用では TP1(40%) → SL移動 → TP2(35%) → TP3(25%) を推奨
+// STRATEGY EXECUTION（ブレイクイーブン + トレーリング）
+// エントリー価格とATRを記憶し、毎バーSLを動的に更新する
+//   1) 含み益が be_trig を超えたら SL をエントリー価格(+保険)へ
+//   2) 含み益が trail_trig を超えたら ATR×trail_dist でトレーリング
+//   3) 最終利確上限は tp3_mult（トレールが効かない急騰用）
 // ============================================================
+var float pos_entry = na   // エントリー価格
+var float pos_atr   = na   // エントリー時ATR（SL/TP幅を固定）
+var float dyn_sl    = na   // 動的ストップロス
+
+// --- エントリー ---
 if long_entry
     strategy.entry("Long", strategy.long, comment="▲ BUY")
-    strategy.exit("Long Exit", "Long",
-         limit   = long_tp2,
-         stop    = long_sl,
-         comment_profit = "✅ TP2 Hit",
-         comment_loss   = "❌ SL Hit")
+    pos_entry := close
+    pos_atr   := atr
+    dyn_sl    := close - atr * sl_mult
 
 if short_entry
     strategy.entry("Short", strategy.short, comment="▼ SELL")
-    strategy.exit("Short Exit", "Short",
-         limit   = short_tp2,
-         stop    = short_sl,
-         comment_profit = "✅ TP2 Hit",
-         comment_loss   = "❌ SL Hit")
+    pos_entry := close
+    pos_atr   := atr
+    dyn_sl    := close + atr * sl_mult
+
+// --- ポジション管理（毎バー、SLを更新） ---
+if strategy.position_size > 0 and not na(pos_entry)
+    if use_trail
+        // トレール発動：高値からtrail_dist離れた位置までSLを引き上げ
+        if high >= pos_entry + pos_atr * trail_trig
+            dyn_sl := math.max(dyn_sl, high - pos_atr * trail_dist)
+        // ブレイクイーブン発動：SLをエントリー価格+保険へ
+        else if high >= pos_entry + pos_atr * be_trig
+            dyn_sl := math.max(dyn_sl, pos_entry + pos_atr * 0.1)
+        strategy.exit("Long Exit", "Long",
+             stop  = dyn_sl,
+             limit = pos_entry + pos_atr * tp3_mult,
+             comment_profit = "✅ TP", comment_loss = "❌ SL")
+    else
+        strategy.exit("Long Exit", "Long",
+             stop  = pos_entry - pos_atr * sl_mult,
+             limit = pos_entry + pos_atr * tp2_mult,
+             comment_profit = "✅ TP2", comment_loss = "❌ SL")
+
+if strategy.position_size < 0 and not na(pos_entry)
+    if use_trail
+        if low <= pos_entry - pos_atr * trail_trig
+            dyn_sl := math.min(dyn_sl, low + pos_atr * trail_dist)
+        else if low <= pos_entry - pos_atr * be_trig
+            dyn_sl := math.min(dyn_sl, pos_entry - pos_atr * 0.1)
+        strategy.exit("Short Exit", "Short",
+             stop  = dyn_sl,
+             limit = pos_entry - pos_atr * tp3_mult,
+             comment_profit = "✅ TP", comment_loss = "❌ SL")
+    else
+        strategy.exit("Short Exit", "Short",
+             stop  = pos_entry + pos_atr * sl_mult,
+             limit = pos_entry - pos_atr * tp2_mult,
+             comment_profit = "✅ TP2", comment_loss = "❌ SL")
 
 // ============================================================
 // VISUALS ─ EMA
