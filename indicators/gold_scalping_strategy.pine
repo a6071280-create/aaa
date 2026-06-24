@@ -51,7 +51,7 @@ sl_mult    = input.float(1.5, "Stop Loss  (ATR ×)", minval=0.1, step=0.1, group
      tooltip="エントリー価格からATR×1.5の距離に損切り")
 tp1_mult   = input.float(2.0, "TP1        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
      tooltip="第1利確目標。ポジションの40%を決済")
-tp2_mult   = input.float(3.0, "TP2        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
+tp2_mult   = input.float(4.0, "TP2        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
      tooltip="第2利確目標。ポジションの35%を決済。バックテストの主ターゲット")
 tp3_mult   = input.float(4.5, "TP3        (ATR ×)", minval=0.1, step=0.1, group=grp_atr,
      tooltip="第3利確目標。残り25%を決済")
@@ -83,8 +83,15 @@ _stoch = ta.stoch(_rsi, _rsi, _rsi, srsi_stoch_len)
 k      = ta.sma(_stoch, srsi_k_smooth)
 d      = ta.sma(k, srsi_d_smooth)
 
+// RSI(14) 方向フィルター
+rsi14 = ta.rsi(close, 14)
+
 // ATR
 atr = ta.atr(atr_period)
+
+// ATRが平均より高い（ボラティリティがある時だけ入る）
+atr_ma       = ta.sma(atr, 50)
+vol_ok       = atr > atr_ma * 0.8
 
 // Session
 in_session = use_session ? not na(time(timeframe.period, session_utc, "UTC")) : true
@@ -93,36 +100,40 @@ in_session = use_session ? not na(time(timeframe.period, session_utc, "UTC")) : 
 is_bull = ema_fast > ema_slow
 is_bear = ema_fast < ema_slow
 
-// EMAの開き具合（レンジ相場を除外）
-ema_gap_pct = math.abs(ema_fast - ema_slow) / close * 100
-strong_trend = ema_gap_pct > 0.03
+// EMAの開き具合（レンジ相場を除外）0.05%以上開いていること
+ema_gap_pct  = math.abs(ema_fast - ema_slow) / close * 100
+strong_trend = ema_gap_pct > 0.05
 
-// StochRSIが直近で売られすぎ/買われすぎゾーンを通過したか
-was_oversold   = ta.lowest(k, 8) < 25
-was_overbought = ta.highest(k, 8) > 75
+// StochRSIが直近8本で売られすぎ/買われすぎゾーンを通過したか（厳格化）
+was_oversold   = ta.lowest(k, 8) < 20
+was_overbought = ta.highest(k, 8) > 80
 
 // ============================================================
-// ENTRY CONDITIONS（強化版）
+// ENTRY CONDITIONS（強化版 v2）
 // ============================================================
-// LONG: EMA200上 + 上昇トレンド + トレンド強度あり
-//       + StochRSI売られすぎからの反発
+// LONG: EMA200上 + 上昇トレンド + 強いトレンド
+//       + RSI>50 + StochRSI売られすぎからの反発
 long_entry = is_bull
      and close > ema200
      and strong_trend
+     and rsi14 > 50
      and ta.crossover(k, d)
      and was_oversold
      and k < srsi_ob
+     and vol_ok
      and in_session
      and strategy.position_size == 0
 
-// SHORT: EMA200下 + 下降トレンド + トレンド強度あり
-//        + StochRSI買われすぎからの反落
+// SHORT: EMA200下 + 下降トレンド + 強いトレンド
+//        + RSI<50 + StochRSI買われすぎからの反落
 short_entry = is_bear
      and close < ema200
      and strong_trend
+     and rsi14 < 50
      and ta.crossunder(k, d)
      and was_overbought
      and k > srsi_os
+     and vol_ok
      and in_session
      and strategy.position_size == 0
 
