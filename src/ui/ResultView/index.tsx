@@ -1,17 +1,22 @@
-import type { PredictionResult, PredictionInput, PredictionSession } from '../../domain/types'
+import type { PredictionResult, PredictionInput, PredictionSession, FeedbackEntry } from '../../domain/types'
 import { CONFIDENCE_LABELS } from '../../config/defaults'
 import { ScoreBreakdownChart } from './ScoreBreakdownChart'
 import { SensitivityTable } from './SensitivityTable'
 import { ReferenceMachineTable } from './ReferenceMachineTable'
+import { FeedbackSection } from './FeedbackSection'
 import { ExportButton } from '../ExportButton'
+import type { WeightAdjustment } from '../../domain/learning/WeightLearner'
 
 interface Props {
   result: PredictionResult | null
   input: PredictionInput
   session: PredictionSession | null
+  feedbackHistory: FeedbackEntry[]
+  adjustments: WeightAdjustment[]
+  onFeedback: (actualWeeks: number) => void
 }
 
-export function ResultView({ result, input, session }: Props) {
+export function ResultView({ result, input, session, feedbackHistory, adjustments, onFeedback }: Props) {
   if (!result) {
     return (
       <div className="result-placeholder">
@@ -85,6 +90,18 @@ export function ResultView({ result, input, session }: Props) {
       <div className="print-footer">
         {machineName} 仕入れ判断レポート — {new Date(result.predictedAt).toLocaleString('ja-JP')} 作成
       </div>
+
+      {/* フィードバック */}
+      {session && (
+        <FeedbackSection
+          sessionId={session.id}
+          gameFlow={input.machineSpec.gameFlow}
+          predictedWeeks={contributionWeeks.weeks}
+          history={feedbackHistory}
+          adjustments={adjustments}
+          onSubmit={onFeedback}
+        />
+      )}
 
       {/* エクスポート・印刷 */}
       {session && (

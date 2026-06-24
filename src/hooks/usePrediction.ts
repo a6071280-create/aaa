@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import type { PredictionInput, PredictionResult, PredictionSession } from '../domain/types'
 import { RuleBasedPredictor } from '../domain/predictor/RuleBasedPredictor'
+import type { PredictorWeights } from '../config/weights'
+import { DEFAULT_WEIGHTS } from '../config/weights'
 import { DEFAULT_NEW_MACHINE_DAILY_MARGIN_YEN, DEFAULT_TARGET_RECOVERY_WEEKS, DEFAULT_MACHINE_PRICE_YEN } from '../config/defaults'
-
-const predictor = new RuleBasedPredictor()
 
 export function buildDefaultInput(): PredictionInput {
   return {
@@ -39,7 +39,8 @@ export function buildDefaultInput(): PredictionInput {
   }
 }
 
-export function usePrediction() {
+export function usePrediction(weights: PredictorWeights = DEFAULT_WEIGHTS) {
+  const predictor = useMemo(() => new RuleBasedPredictor(weights), [weights])
   const [input, setInput] = useState<PredictionInput>(buildDefaultInput)
   const [result, setResult] = useState<PredictionResult | null>(null)
   const [session, setSession] = useState<PredictionSession | null>(null)

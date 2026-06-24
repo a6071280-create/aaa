@@ -149,3 +149,14 @@ export interface PredictionSession {
   input: PredictionInput
   result: PredictionResult
 }
+
+// ── 学習フィードバック ────────────────────────────────────────────────────────
+
+export interface FeedbackEntry {
+  sessionId: string
+  machineName: string
+  gameFlow: GameFlowType
+  predictedWeeks: number
+  actualWeeks: number
+  feedbackAt: string
+}
