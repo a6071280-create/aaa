@@ -6,10 +6,9 @@
 //  推奨ペア  : XAUUSD (Gold Spot)
 // ============================================================
 strategy("GOLD Scalping Pro [XAU/USD]",
-     shorttitle          = "GOLD Scalp Pro",
+     shorttitle          = "GOLD Scalp",
      overlay             = true,
      initial_capital     = 10000,
-     currency            = currency.USD,
      default_qty_type    = strategy.percent_of_equity,
      default_qty_value   = 2,
      commission_type     = strategy.commission.percent,
