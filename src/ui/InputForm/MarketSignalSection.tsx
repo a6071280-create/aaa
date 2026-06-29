@@ -2,14 +2,23 @@ import { useState } from 'react'
 import type { MarketSignal, ReferenceMachine, EvalScore } from '../../domain/types'
 import { REFERENCE_MACHINES } from '../../data/referenceMachines'
 import { StarRating } from './MachineSpecSection'
+import { fetchYoutubeSignal } from '../../utils/youtubeSignal'
+
+const YT_KEY_STORAGE = 'shiire_yt_api_key'
 
 interface Props {
   value: MarketSignal
   onChange: (v: MarketSignal) => void
+  machineName: string
 }
 
-export function MarketSignalSection({ value, onChange }: Props) {
+export function MarketSignalSection({ value, onChange, machineName }: Props) {
   const [selectId, setSelectId] = useState('')
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem(YT_KEY_STORAGE) ?? '')
+  const [showKeyInput, setShowKeyInput] = useState(false)
+  const [ytLoading, setYtLoading] = useState(false)
+  const [ytError, setYtError] = useState<string | null>(null)
+  const [ytSuccess, setYtSuccess] = useState(false)
 
   const addRef = () => {
     if (!selectId) return
@@ -29,6 +38,41 @@ export function MarketSignalSection({ value, onChange }: Props) {
     r => !value.referenceMachines.some(s => s.id === r.id)
   )
 
+  const doYoutubeSearch = async (key: string) => {
+    if (!machineName.trim()) return
+    setYtLoading(true)
+    setYtError(null)
+    setYtSuccess(false)
+    try {
+      const result = await fetchYoutubeSignal(machineName.trim(), key)
+      onChange({ ...value, popularityScore: result.score, popularityMemo: result.memo })
+      setYtSuccess(true)
+      setTimeout(() => setYtSuccess(false), 3000)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'エラーが発生しました'
+      setYtError(msg)
+    } finally {
+      setYtLoading(false)
+    }
+  }
+
+  const handleYoutubeClick = () => {
+    if (!machineName.trim()) return
+    if (!apiKey) {
+      setShowKeyInput(true)
+    } else {
+      doYoutubeSearch(apiKey)
+    }
+  }
+
+  const handleKeySave = () => {
+    const trimmed = apiKey.trim()
+    if (!trimmed) return
+    localStorage.setItem(YT_KEY_STORAGE, trimmed)
+    setShowKeyInput(false)
+    doYoutubeSearch(trimmed)
+  }
+
   return (
     <div className="section">
       <div className="section-title">
@@ -37,11 +81,60 @@ export function MarketSignalSection({ value, onChange }: Props) {
 
       <div className="field-row">
         <label className="field-label">大衆期待度（SNS）</label>
-        <StarRating
-          value={value.popularityScore}
-          onChange={v => onChange({ ...value, popularityScore: v as EvalScore })}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <StarRating
+            value={value.popularityScore}
+            onChange={v => onChange({ ...value, popularityScore: v as EvalScore })}
+          />
+          <button
+            className={`btn btn-sm yt-btn${ytSuccess ? ' yt-btn-success' : ''}`}
+            type="button"
+            disabled={ytLoading || !machineName.trim()}
+            onClick={handleYoutubeClick}
+            title="YouTube試打動画を検索してスコアを自動設定"
+          >
+            {ytLoading ? '取得中…' : ytSuccess ? '✓ 取得完了' : '▶ YouTube自動取得'}
+          </button>
+        </div>
       </div>
+
+      {showKeyInput && (
+        <div className="yt-key-panel">
+          <p className="yt-key-desc">
+            YouTube Data API v3 キーを入力してください。
+            <a
+              href="https://console.cloud.google.com/apis/credentials"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Google Cloud Console
+            </a>
+            で無料取得できます（1日1万クエリ）。
+          </p>
+          <div className="yt-key-row">
+            <input
+              type="password"
+              value={apiKey}
+              placeholder="AIza..."
+              onChange={e => setApiKey(e.target.value)}
+              className="yt-key-input"
+              onKeyDown={e => e.key === 'Enter' && handleKeySave()}
+            />
+            <button className="btn btn-sm btn-primary" type="button" onClick={handleKeySave}
+              disabled={!apiKey.trim()}>
+              保存して検索
+            </button>
+            <button className="btn btn-sm btn-secondary" type="button"
+              onClick={() => setShowKeyInput(false)}>
+              キャンセル
+            </button>
+          </div>
+        </div>
+      )}
+
+      {ytError && (
+        <div className="yt-error">⚠ {ytError}</div>
+      )}
 
       <div className="field-row">
         <label className="field-label">出典メモ</label>

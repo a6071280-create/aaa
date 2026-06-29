@@ -60,6 +60,7 @@ export function InputForm({ value, onChange, onPredict, onReset, hasResult }: Pr
         <MarketSignalSection
           value={value.marketSignal}
           onChange={marketSignal => onChange({ ...value, marketSignal })}
+          machineName={value.machineSpec.machineName}
         />
         <ManagerEvalSection
           value={value.managerEval}
