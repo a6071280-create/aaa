@@ -1,73 +1,27 @@
-# React + TypeScript + Vite
+# 競合イベントカレンダー
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+長野県内および近隣エリアの競合パチンコ・スロットホールのイベント情報と、自社の販促日を一つのカレンダー上で管理するツールです。競合イベントとの被りを可視化し、入力作業の手間を減らすことを目的としています。
 
-Currently, two official plugins are available:
+## 主な機能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **月間カレンダービュー**: 日付セルに店舗名+イベント種別タグを表示。1日に4件以上ある場合は「+N件」で省略し、クリックで展開します。自社の販促日は別色タグで重ねて表示し、競合との被りを一目で確認できます。
+- **エリアフィルタ**: 「長野県内」「近隣含む(新潟・群馬・山梨・岐阜・愛知・埼玉・静岡)」を上部で切り替えられます。
+- **入力モーダル**: 店舗名は過去の入力からサジェストされ、エリア・実施日・時間帯・イベント種別(取材来店/スロセレ/ぱちタウンコレクション/旧イベ/その他)・メモを登録できます。
+- **リストビュー**: 週次/月次で一覧表示し、CSVへエクスポートできます。
+- **集計ビュー**: エリア別・店舗別のイベント密度ランキングを表示します。
 
-## React Compiler
+## データについて
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+入力データはブラウザのlocalStorageに保存されます(サーバー連携はありません)。データ収集は手入力を前提としており、外部サイトの自動収集は行いません。
 
-## Expanding the ESLint configuration
+## 開発
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev       # http://localhost:5173
+npm run lint
+npm run test
+npm run build      # dist/ に出力
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+GitHub Pagesへは `main` ブランチへのpushで自動デプロイされます(`.github/workflows/deploy.yml`)。
