@@ -220,6 +220,15 @@ export const REFERENCE_MACHINES: ReferenceMachine[] = [
     memo: '荒波型。コアIPも8週。',
   },
   {
+    id: 'takt_op',
+    machineName: 'Lタクトオーパス',
+    category: 'smart_slot',
+    gameFlow: 'mixed_12',
+    actualContributionWeeks: 5,
+    releaseYear: 2024,
+    memo: '荒波型。アニメIP。5週で終了。',
+  },
+  {
     id: 'rezero2',
     machineName: 'Lリゼロ2(season2)',
     category: 'smart_slot',

@@ -46,7 +46,7 @@ export const DEFAULT_WEIGHTS: PredictorWeights = {
   categoryBaseline: {
     normal_a: 181,         // マイジャグV/キングハナハナ/ゴーゴー3 平均
     pseudo_bonus_at: 84,   // モンキーV/北斗/戦国乙女4 平均
-    mixed_12: 80,          // からくり/東京喰種 平均
+    mixed_12: 30,          // 全9件平均（からくり94〜エヴァ未来1・タクトOP5）
     game_count_add: 57,    // かぐや様
     st: 42,                // ゴッドイーター
     other: 60,
