@@ -17,7 +17,7 @@ export function MachineSpecSection({ value, onChange }: Props) {
       <div className="section-title">
         <span className="section-badge">A</span>機種スペック
       </div>
-
+      <div className="section-body">
       <div className="field-row">
         <label className="field-label">機種名</label>
         <input
@@ -106,6 +106,7 @@ export function MachineSpecSection({ value, onChange }: Props) {
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+      </div>
       </div>
     </div>
   )

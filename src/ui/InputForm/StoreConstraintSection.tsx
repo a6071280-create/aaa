@@ -42,7 +42,7 @@ export function StoreConstraintSection({ value, onChange }: Props) {
       <div className="section-title">
         <span className="section-badge">D</span>自店制約（仕入れ台数算出）
       </div>
-
+      <div className="section-body">
       {numField('newMachineBudget', '新台予算上限', '円', { step: 100000, placeholder: '10000000' })}
       {numField('machinePrice', '1台あたり機械代', '円', { step: 10000 })}
       {numField('availableSlots', '島の空き台数', '台', { min: 1 })}
@@ -113,6 +113,7 @@ export function StoreConstraintSection({ value, onChange }: Props) {
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
+      </div>
       </div>
     </div>
   )

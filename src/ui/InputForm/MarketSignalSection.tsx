@@ -78,7 +78,7 @@ export function MarketSignalSection({ value, onChange, machineName }: Props) {
       <div className="section-title">
         <span className="section-badge">B</span>市場期待度
       </div>
-
+      <div className="section-body">
       <div className="field-row">
         <label className="field-label">大衆期待度（SNS）</label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -178,6 +178,7 @@ export function MarketSignalSection({ value, onChange, machineName }: Props) {
             ※ 参照台未選択時はゲームフロー別の標準値をベースラインとします
           </p>
         )}
+      </div>
       </div>
     </div>
   )

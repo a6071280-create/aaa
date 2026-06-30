@@ -19,7 +19,7 @@ export function ManagerEvalSection({ value, onChange }: Props) {
       <div className="section-title">
         <span className="section-badge">C</span>店長試打評価
       </div>
-
+      <div className="section-body">
       {EVAL_ROWS.map(({ key, label }) => (
         <div className="field-row" key={key}>
           <label className="field-label">{label}</label>
@@ -39,6 +39,7 @@ export function ManagerEvalSection({ value, onChange }: Props) {
           placeholder="試打した感想、懸念点など"
           onChange={e => onChange({ ...value, comment: e.target.value })}
         />
+      </div>
       </div>
     </div>
   )
