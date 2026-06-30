@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ['claude/pachinko-acquisition-predictor-otik6u']
+    branches: ['claude/event-calendar-tool-dsqo74']
   workflow_dispatch:
 
 permissions:
