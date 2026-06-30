@@ -1,5 +1,16 @@
 import type { PredictionResult, PredictionInput, PredictionSession, FeedbackEntry } from '../../domain/types'
 import { CONFIDENCE_LABELS } from '../../config/defaults'
+
+// DK-SIS 2023年業界平均 11.2週 を基準とした判定ティア
+const DK_SIS_AVG = 11.2
+
+function hitTier(weeks: number): { label: string; color: string } {
+  if (weeks < 8)   return { label: '短命リスク（見送り推奨）', color: 'var(--danger)' }
+  if (weeks < 12)  return { label: 'ボーダー（DK-SIS平均付近）', color: '#e67e22' }
+  if (weeks <= 20) return { label: '標準ヒット', color: 'var(--text-muted)' }
+  if (weeks <= 50) return { label: 'ヒット', color: 'var(--success)' }
+  return { label: 'メガヒット', color: '#8e44ad' }
+}
 import { ScoreBreakdownChart } from './ScoreBreakdownChart'
 import { SensitivityTable } from './SensitivityTable'
 import { ReferenceMachineTable } from './ReferenceMachineTable'
@@ -29,6 +40,7 @@ export function ResultView({ result, input, session, feedbackHistory, adjustment
 
   const { contributionWeeks, unitRecommendation } = result
   const machineName = input.machineSpec.machineName
+  const tier = hitTier(contributionWeeks.weeks)
 
   const handlePrint = () => {
     document.title = `仕入れ判断_${machineName}_${new Date().toLocaleDateString('ja-JP')}`
@@ -48,6 +60,12 @@ export function ResultView({ result, input, session, feedbackHistory, adjustment
           <span className={`kpi-confidence conf-${contributionWeeks.confidence}`}>
             信頼度 {CONFIDENCE_LABELS[contributionWeeks.confidence]}
           </span>
+          <div style={{ fontSize: 12, fontWeight: 600, color: tier.color, marginTop: 4 }}>
+            {tier.label}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+            DK-SIS業界平均 {DK_SIS_AVG}週
+          </div>
         </div>
 
         <div className="kpi-card">
